@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "DreamEntry": {
+      "title": "Dream Entry",
+      "description": "A recorded dream with its transcription, AI-generated image, and interpretation.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "timestamp": { "type": "integer" },
+        "transcript": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "interpretation": { "type": "string" },
+        "title": { "type": "string" }
+      },
+      "required": ["userId", "timestamp", "transcript"]
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "A follow-up question/answer about a dream.",
+      "type": "object",
+      "properties": {
+        "dreamId": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "model"] },
+        "content": { "type": "string" },
+        "timestamp": { "type": "integer" }
+      },
+      "required": ["dreamId", "role", "content", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/dreams/{dreamId}": {
+      "schema": "DreamEntry",
+      "description": "Dream entries collection"
+    },
+    "/dreams/{dreamId}/messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Follow-up chat messages for a specific dream"
+    }
+  }
+}

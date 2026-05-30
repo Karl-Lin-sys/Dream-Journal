@@ -1,0 +1,6 @@
+{
+  "name": "Dream Journal",
+  "description": "A multi-modal dream journal with voice recording, AI transcription, surrealist visualization, and psychological interpretation.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
