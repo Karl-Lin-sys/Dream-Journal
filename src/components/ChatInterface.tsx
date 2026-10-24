@@ -1,3 +1,4 @@
+import { dreamRequest } from '../lib/api';
 import React, { useState, useRef, useEffect } from 'react';
 import { DreamEntry, ChatMessage } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -59,16 +60,11 @@ export default function ChatInterface({ dream, onClose }: ChatInterfaceProps) {
       });
 
       // 2. Call local API for Gemini response
-      const response = await fetch('/api/dream/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          transcript: dream.transcript,
-          userMessage: userMsg,
-          messages: messages.map(m => ({ role: m.role, parts: [{ text: m.content }] }))
-        })
+      const data = await dreamRequest('/api/dream/chat', {
+        transcript: dream.transcript,
+        userMessage: userMsg,
+        messages: messages.slice(-20).map(m => ({ role: m.role, parts: [{ text: m.content }] }))
       });
-      const data = await response.json();
 
       // 3. Save AI response to Firestore
       await addDoc(collection(db, 'dreams', dream.id, 'messages'), {

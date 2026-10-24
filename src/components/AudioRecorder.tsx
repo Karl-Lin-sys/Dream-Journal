@@ -1,3 +1,4 @@
+import { dreamRequest } from '../lib/api';
 import React, { useState, useRef } from 'react';
 import { Mic, Square, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -55,12 +56,7 @@ export default function AudioRecorder({ onDreamProcessed, isProcessing, setIsPro
   const processDream = async (audioData: string) => {
     setIsProcessing(true);
     try {
-      const response = await fetch('/api/dream/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audioData, mimeType: 'audio/webm' })
-      });
-      const data = await response.json();
+      const data = await dreamRequest('/api/dream/process', { audioData, mimeType: 'audio/webm' });
       if (data.error) throw new Error(data.error);
       onDreamProcessed(data);
     } catch (err) {

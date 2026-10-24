@@ -3,17 +3,26 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import dotenv from "dotenv";
+import { initializeApp as initializeAdminApp } from "firebase-admin/app";
+import { getAuth as getAdminAuth } from "firebase-admin/auth";
+import { dreamSecurity, validProcess, validChat } from "./server-security";
 
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
 
-app.use(express.json({ limit: '50mb' }));
+const projectId = process.env.FIREBASE_PROJECT_ID;
+if (!projectId || !process.env.GEMINI_API_KEY) throw new Error('Configure FIREBASE_PROJECT_ID and a server GEMINI_API_KEY');
+const adminAuth = getAdminAuth(initializeAdminApp({ projectId }));
+const allowed = new Set((process.env.DREAM_ALLOWED_UIDS || '').split(',').map(s => s.trim()).filter(Boolean));
+app.use('/api/dream', dreamSecurity(token => adminAuth.verifyIdToken(token), allowed));
+app.use(express.json({ limit: '12mb' }));
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
   httpOptions: {
+    timeout: 60000,
     headers: {
       'User-Agent': 'aistudio-build',
     }
@@ -23,10 +32,10 @@ const ai = new GoogleGenAI({
 // API Routes
 app.post("/api/dream/process", async (req, res) => {
   try {
-    const { audioData, mimeType } = req.body;
-    if (!audioData) {
+    if (!validProcess(req.body)) {
       return res.status(400).json({ error: "Missing audio data" });
     }
+    const { audioData, mimeType } = req.body;
 
     // 1. Transcribe Audio
     const transResponse: GenerateContentResponse = await ai.models.generateContent({
@@ -129,13 +138,16 @@ Provide the response in JSON format with the following structure:
     });
 
   } catch (error: any) {
-    console.error("Dream processing error:", error);
-    res.status(500).json({ error: error.message });
+    console.error("Dream processing failed");
+    res.status(500).json({ error: "Processing failed. Try again later." });
+  } finally {
+    res.locals.releaseDreamSlot?.();
   }
 });
 
 app.post("/api/dream/chat", async (req, res) => {
   try {
+    if (!validChat(req.body)) return res.status(400).json({ error: "Invalid chat input" });
     const { transcript, messages, userMessage } = req.body;
     
     const chat = ai.chats.create({
@@ -151,8 +163,10 @@ app.post("/api/dream/chat", async (req, res) => {
     const response = await chat.sendMessage({ message: userMessage });
     res.json({ text: response.text });
   } catch (error: any) {
-    console.error("Chat error:", error);
-    res.status(500).json({ error: error.message });
+    console.error("Chat processing failed");
+    res.status(500).json({ error: "Processing failed. Try again later." });
+  } finally {
+    res.locals.releaseDreamSlot?.();
   }
 });
 
@@ -171,7 +185,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  app.listen(PORT, process.env.HOST || "127.0.0.1", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
